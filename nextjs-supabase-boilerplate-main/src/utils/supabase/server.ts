@@ -28,6 +28,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
+import { Database } from "@/types/database.types";
 
 /**
  * Clerk 인증과 통합된 Supabase 서버 클라이언트 생성
@@ -44,7 +45,7 @@ export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
   const { getToken } = await auth();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -108,7 +109,7 @@ export async function createServerSupabaseAdminClient() {
     );
   }
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE!,
     {

@@ -10,27 +10,88 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-// Add a placeholder for the public schema, or leave it to be generated.
-// Example:
-// export interface Database {
-//   public: {
-//     Tables: {
-//       // your_table_name: {
-//       //   Row: {}; // The data expected to be returned from a "select" statement.
-//       //   Insert: {}; // The data expected passed to an "insert" statement.
-//       //   Update: {}; // The data expected passed to an "update" statement.
-//       // };
-//     };
-//     Views: {
-//       // your_view_name: {
-//       //   Row: {}; // The data expected to be returned from a "select" statement.
-//       // };
-//     };
-//     Functions: {
-//       // your_function_name: {
-//       //   Args: {}; // The arguments passed to the function.
-//       //   Returns: {}; // The data expected to be returned from the function.
-//       // };
-//     };
-//   };
-// }
+export interface Database {
+  public: {
+    Tables: {
+      products: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          price: number;
+          image_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          price: number;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          price?: number;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      payments: {
+        Row: {
+          id: string;
+          payment_key: string;
+          order_id: string;
+          amount: number;
+          status: "PENDING" | "DONE" | "CANCELED";
+          product_id: string | null;
+          user_id: string | null;
+          payment_method: string | null;
+          approved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          payment_key: string;
+          order_id: string;
+          amount: number;
+          status: "PENDING" | "DONE" | "CANCELED";
+          product_id?: string | null;
+          user_id?: string | null;
+          payment_method?: string | null;
+          approved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          payment_key?: string;
+          order_id?: string;
+          amount?: number;
+          status?: "PENDING" | "DONE" | "CANCELED";
+          product_id?: string | null;
+          user_id?: string | null;
+          payment_method?: string | null;
+          approved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+  };
+}

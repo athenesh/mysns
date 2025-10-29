@@ -24,6 +24,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@clerk/nextjs";
+import { Database } from "@/types/database.types";
 
 /**
  * Clerk 인증과 통합된 Supabase 브라우저 클라이언트 생성
@@ -39,7 +40,7 @@ import { useAuth } from "@clerk/nextjs";
 export function useSupabaseClient() {
   const { getToken } = useAuth();
 
-  return createBrowserClient(
+  return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -72,8 +73,8 @@ export function useSupabaseClient() {
  * React 컴포넌트 내부에서는 useSupabaseClient()를 사용하세요.
  */
 export function createBrowserSupabaseClient() {
-  return createBrowserClient(
+  return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 }
