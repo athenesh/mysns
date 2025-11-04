@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * @file layout.tsx
  * @description 메인 레이아웃 (Sidebar + Header + BottomNav)
