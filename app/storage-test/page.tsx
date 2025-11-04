@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
-import { uploadFile, listFiles, deleteFile, type FileObject } from "@/actions/storage";
+import { uploadFile, listFiles, deleteFile, downloadFile, type FileObject } from "@/actions/storage";
 import { Button } from "@/components/ui/button";
 import {
   LuUpload,

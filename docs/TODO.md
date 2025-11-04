@@ -23,3 +23,21 @@
 - [ ] `tsconfig.json` 파일
 - [ ] `eslint.config.mjs` 파일
 - [ ] `AGENTS.md` 파일
+
+## 향후 작업 (기본 개발 완료 후)
+
+### 다국어 지원
+
+- [ ] next-intl 다국어 지원 설정
+  - 참고: `docs/i18n-plan.md`
+  - [ ] 패키지 설치 및 기본 설정
+  - [ ] 미들웨어 설정 (next-intl + Clerk 통합)
+  - [ ] App Router 구조 변경 (`app/[locale]`)
+  - [ ] 번역 파일 작성 (`messages/ko.json`, `messages/en.json`)
+  - [ ] 레이아웃 컴포넌트 마이그레이션 (Sidebar, BottomNav, Header)
+  - [ ] 게시물 관련 컴포넌트 마이그레이션 (PostCard, CreatePostModal, CheerButton)
+  - [ ] 프로필 관련 컴포넌트 마이그레이션 (ProfileHeader, FollowButton, AvatarUpload)
+  - [ ] 피드백 관련 컴포넌트 마이그레이션 (FeedbackForm, FeedbackList)
+  - [ ] 언어 전환 기능 추가 (LanguageSwitcher 컴포넌트)
+  - [ ] Server Actions 및 페이지 마이그레이션
+  - [ ] 테스트 및 최종 검증
