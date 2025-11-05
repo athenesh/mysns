@@ -12,13 +12,27 @@ import { PostFeedWrapper } from "@/components/post/PostFeedWrapper";
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const initialPosts = await getPosts();
+  try {
+    const initialPosts = await getPosts();
 
-  return (
-    <div className="min-h-screen bg-[#fafafa] py-8">
-      <div className="max-w-[630px] mx-auto px-4">
-        <PostFeedWrapper initialPosts={initialPosts} />
+    return (
+      <div className="min-h-screen bg-[#fafafa] py-8">
+        <div className="max-w-[630px] mx-auto px-4">
+          <PostFeedWrapper initialPosts={initialPosts} />
+        </div>
       </div>
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error("Error loading posts:", error);
+    return (
+      <div className="min-h-screen bg-[#fafafa] py-8">
+        <div className="max-w-[630px] mx-auto px-4">
+          <div className="text-center py-16 text-[#8e8e8e]">
+            <p className="text-lg mb-2">게시물을 불러오는 중 오류가 발생했습니다.</p>
+            <p className="text-sm">페이지를 새로고침해주세요.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }

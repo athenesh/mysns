@@ -132,3 +132,27 @@
     @apply max-w-7xl mx-auto pt-16 px-4;
   }
 }
+
+/* 더블탭 하트 애니메이션 */
+@keyframes doubleTapHeart {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+.double-tap-heart-animation {
+  animation: doubleTapHeart 1s ease-out forwards;
+}

@@ -18,7 +18,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost } from "@/actions/post";
+import { useClerkSupabaseClient } from "@/lib/supabase/clerk-client";
+import { useUser } from "@clerk/nextjs";
 import { Loader2, Image as ImageIcon, X } from "lucide-react";
+
+const STORAGE_BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET || "uploads";
 
 interface CreatePostModalProps {
   open: boolean;
@@ -27,10 +31,13 @@ interface CreatePostModalProps {
 
 export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
   const router = useRouter();
+  const supabase = useClerkSupabaseClient();
+  const { user } = useUser();
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,28 +72,95 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
-    const formData = new FormData();
-    formData.append("image", image);
-    formData.append("caption", caption);
-
-    const result = await createPost(formData);
-
-    if (result.error) {
-      setError(result.error);
-      setLoading(false);
+    if (!user) {
+      setError("로그인이 필요합니다.");
       return;
     }
 
-    // 성공 시 모달 닫기 및 페이지 새로고침
-    setImage(null);
-    setPreview(null);
-    setCaption("");
-    setLoading(false);
-    onOpenChange(false);
-    router.refresh();
+    setLoading(true);
+    setUploadProgress(0);
+    setError(null);
+
+    try {
+      console.group("createPost - client upload");
+      console.log("Starting image upload...");
+
+      // 1. 클라이언트에서 직접 Supabase Storage에 이미지 업로드
+      const fileExt = image.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(7)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      console.log("Uploading to path:", filePath);
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(filePath, image, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: image.type,
+        });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        setError(uploadError.message || "이미지 업로드에 실패했습니다.");
+        setLoading(false);
+        setUploadProgress(null);
+        console.groupEnd();
+        return;
+      }
+
+      console.log("Image uploaded successfully:", uploadData.path);
+      setUploadProgress(100);
+
+      // 2. Supabase Storage Public URL 생성
+      const { data: urlData } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(uploadData.path);
+
+      console.log("Public URL generated:", urlData.publicUrl);
+
+      // 3. 이미지 URL과 캡션을 Server Action에 전달
+      const result = await createPost({
+        imageUrl: urlData.publicUrl,
+        caption: caption,
+      });
+
+      if (result.error) {
+        // 네트워크 에러인지 확인
+        if (result.error.includes("네트워크") || result.error.includes("Network")) {
+          setError("네트워크 연결을 확인해주세요. 다시 시도해주세요.");
+        } else {
+          setError(result.error);
+        }
+        setLoading(false);
+        setUploadProgress(null);
+        console.groupEnd();
+        return;
+      }
+
+      console.log("Post created successfully");
+      console.groupEnd();
+
+      // 성공 시 모달 닫기 및 페이지 새로고침
+      setImage(null);
+      setPreview(null);
+      setCaption("");
+      setLoading(false);
+      setUploadProgress(null);
+      onOpenChange(false);
+      router.refresh();
+    } catch (error) {
+      console.error("Error creating post:", error);
+      setError(
+        error instanceof Error
+          ? `업로드 중 오류가 발생했습니다: ${error.message}`
+          : "게시물 업로드에 실패했습니다. 네트워크 연결을 확인하고 다시 시도해주세요."
+      );
+      setLoading(false);
+      setUploadProgress(null);
+    }
   };
 
   return (
@@ -149,6 +223,21 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
               {caption.length}/2,200
             </p>
           </div>
+
+          {/* 업로드 진행률 */}
+          {uploadProgress !== null && uploadProgress < 100 && (
+            <div className="space-y-2">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                이미지 업로드 중... {uploadProgress}%
+              </p>
+            </div>
+          )}
 
           {/* 에러 메시지 */}
           {error && (

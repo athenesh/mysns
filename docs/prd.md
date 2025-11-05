@@ -42,9 +42,10 @@
 
 ### 기술 스택
 
-- **프론트**: Next.js 15, TypeScript, Tailwind CSS
+- **프론트**: Next.js 15, TypeScript, Tailwind CSS v4
 - **백엔드**: Supabase (DB + Storage), Clerk (인증)
-- **보안**: RLS 없이 API Routes에서 검증 (개발 단계)
+- **보안**: RLS 비활성화 (개발 환경), Server Actions 사용
+- **상태 관리**: React Hooks (최소화), Optimistic UI 패턴
 
 ---
 
@@ -193,11 +194,12 @@
 │ │ 원형   │                                 │
 │ │        │  게시물 12 팔로워 345 팔로잉 67  │
 │ └────────┘                                 │
-│            fullname                        │
-│            bio bio bio...                  │
+│            fullname (선택사항)             │
+│            bio bio bio... (선택사항)       │
 │                                            │
 ├────────────────────────────────────────────┤
 │ [게시물] [릴스] [태그됨]                    │
+│  (활성화)  (향후)  (향후)                  │
 ├────────────────────────────────────────────┤
 │ ┌────┐ ┌────┐ ┌────┐                      │
 │ │    │ │    │ │    │                      │
@@ -213,12 +215,16 @@
 - 프로필 이미지: 150px (Desktop) / 90px (Mobile) - Supabase Storage에서 가져오기
 - 프로필 이미지 업로드 기능 포함
 - 통계: 게시물/팔로워/팔로잉
+- Fullname, Bio 표시 (선택사항, 사용자가 입력한 경우만 표시)
+- 게시물 탭: [게시물] [릴스] [태그됨] - 현재는 게시물만 활성화
 - 그리드: 3열 고정, 1:1 정사각형
-- Hover 시 응원/피드백 수 표시
+- Hover 시 실제 응원/피드백 수 표시
 
 ---
 
-## 5. 게시물 상세 모달 (Desktop)
+## 5. 게시물 상세 모달/페이지
+
+### Desktop
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -238,7 +244,12 @@
 └──────────────────────────┴─────────────────────────────┘
 ```
 
-**Mobile:** 전체 페이지로 전환
+**Desktop:**
+
+- 모달: PostCard 클릭 시 모달로 표시
+- 페이지: `/feed/post/[postId]` URL 직접 접근 시 전체 페이지로 표시 (모달과 동일한 레이아웃)
+
+**Mobile:** 전체 페이지로 전환 (향후 구현)
 
 ---
 
@@ -292,22 +303,29 @@ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
 ### 7.2 게시물
 
-- **작성**: Sidebar "만들기" → 모달
-  - 이미지 업로드 (최대 5MB)
+- **작성**: Sidebar/BottomNav "만들기" → 모달
+  - 이미지 업로드 (최대 5MB, Supabase Storage)
+    - 클라이언트에서 직접 Supabase Storage에 업로드 (Server Action body size limit 문제 해결)
+    - 업로드 진행률 표시
   - 캡션 입력 (최대 2,200자)
-- **피드**: 홈 (/)
+  - 이미지 미리보기 및 삭제 기능
+- **피드**: 홈 (`/feed`)
   - 시간 역순 정렬
-  - 무한 스크롤 (10개씩)
-- **상세**: 클릭 시 모달 (Desktop) / 페이지 (Mobile)
-- **삭제**: ⋯ 메뉴 → 삭제 (본인만)
+  - 무한 스크롤 (10개씩, Intersection Observer)
+  - 에러 처리 및 재시도 기능
+- **상세**:
+  - 모달: PostCard 클릭 시 모달 표시 (Desktop: 이미지 50% + 피드백 50%)
+  - 페이지: `/feed/post/[postId]` URL 직접 접근 시 전체 페이지로 표시 (Desktop: 모달과 동일한 레이아웃)
+- **삭제**: ⋯ 메뉴 → 삭제 (본인만, 향후 구현)
 
 ### 7.3 응원하기 (기존 좋아요)
 
 - **위치**: PostCard 하단 ❤️ 버튼
 - **상태**: 빈 하트 ↔ 빨간 하트
 - **애니메이션**: 클릭 시 scale(1.3) → scale(1)
-- **더블탭**: 이미지 더블탭 시 큰 하트 등장
+- **더블탭**: 이미지 더블탭 시 큰 하트 등장 (모바일/데스크톱 모두 지원)
 - **용어**: "응원하기", "응원 취소", "응원 N개"
+- **기능**: Optimistic UI 업데이트, 실시간 카운트 동기화
 
 ### 7.4 피드백 요청 (기존 댓글)
 
@@ -317,15 +335,24 @@ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   - 상세: 전체 피드백 + 스크롤
 - **삭제**: ⋯ 메뉴 (본인만)
 - **용어**: "피드백 요청", "피드백 작성", "피드백 N개"
+- **대댓글 (답글) 기능**:
+  - 각 피드백에 "답글" 버튼 표시
+  - 대댓글 작성 시 부모 댓글 작성자에게 답글 표시
+  - 대댓글은 들여쓰기로 계층 구조 표현
+  - "답글 N개 보기/숨기기" 토글 기능
+  - Instagram 스타일 UI (이름 + 내용 한 줄)
 
 ### 7.5 프로필
 
-- **내 프로필**: /profile
-  - 프로필 이미지 업로드 (Supabase Storage)
-  - "프로필 편집" (1차 제외, Clerk 설정 사용)
-- **다른 사람**: /profile/[userId]
-  - "팔로우" 또는 "팔로잉" 버튼
-- **게시물 그리드**: 3열, 클릭 시 상세
+- **프로필 페이지**: `/profile/[userId]` (통합 경로)
+  - 내 프로필: 프로필 이미지 업로드 (Supabase Storage)
+  - 다른 사람 프로필: "팔로우" 또는 "팔로잉" 버튼
+  - "프로필 편집" 버튼 (1차 제외, 기능 미구현)
+  - Fullname, Bio 표시 (선택사항)
+- **게시물 탭**: [게시물] [릴스] [태그됨] 탭 UI
+  - 현재는 게시물 탭만 활성화 (릴스, 태그됨은 향후 기능)
+- **게시물 그리드**: 3열, 클릭 시 상세 모달
+- **Hover 효과**: 게시물 썸네일에 실제 응원/피드백 수 표시
 
 ### 7.6 팔로우
 
@@ -334,6 +361,9 @@ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   - 팔로우 중: "팔로잉" (회색)
 - **Hover**: "언팔로우" (빨간 테두리)
 - **클릭**: 즉시 API 호출 → UI 업데이트
+- **API 엔드포인트**:
+  - `POST /api/follow/[userId]`: 팔로우/언팔로우 토글
+  - `GET /api/follow/status/[userId]`: 팔로우 상태 확인 (모바일 앱용)
 
 ### 7.7 프로필 이미지
 
@@ -367,6 +397,8 @@ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 ```
 - Intersection Observer 사용
 - 하단 도달 시 10개씩 로드
+- 로딩 상태 및 에러 처리 포함
+- 재시도 기능
 ```
 
 ### 로딩
@@ -411,11 +443,13 @@ src/
 │   ├── (auth)/
 │   │   ├── sign-in/         # 로그인
 │   │   └── sign-up/         # 회원가입
-│   ├── (main)/
+│   ├── feed/
 │   │   ├── layout.tsx       # Sidebar + 레이아웃
 │   │   ├── page.tsx         # 홈 피드
-│   │   ├── profile/[userId]/page.tsx
 │   │   └── post/[postId]/page.tsx
+│   ├── profile/
+│   │   ├── layout.tsx       # Sidebar + 레이아웃
+│   │   └── [userId]/page.tsx
 │   └── api/
 │       ├── posts/           # 게시물 API
 │       ├── cheers/          # 응원하기 API
@@ -435,6 +469,8 @@ src/
 │   │   └── FeedbackForm.tsx
 │   ├── profile/
 │   │   ├── ProfileHeader.tsx
+│   │   ├── ProfileTabs.tsx # 게시물 탭 UI
+│   │   ├── ProfilePageWrapper.tsx # 탭 상태 관리 래퍼
 │   │   ├── PostGrid.tsx
 │   │   └── AvatarUpload.tsx # 프로필 이미지 업로드
 │   └── ui/
@@ -452,10 +488,11 @@ src/
 
 ### 테이블 구조
 
-- **users**: 사용자 정보 (id, clerk_id, name, avatar_url, created_at)
+- **users**: 사용자 정보 (id, clerk_id, name, fullname, bio, avatar_url, created_at)
 - **posts**: 게시물 (id, user_id, image_url, caption, created_at, updated_at)
 - **likes**: 응원하기 (id, post_id, user_id, created_at) - UNIQUE 제약조건
-- **comments**: 피드백 요청 (id, post_id, user_id, content, created_at, updated_at)
+- **comments**: 피드백 요청 (id, post_id, user_id, content, parent_comment_id, created_at, updated_at)
+  - parent_comment_id: 대댓글인 경우 부모 댓글 ID (NULL이면 최상위 댓글)
 - **follows**: 팔로우 (id, follower_id, following_id, created_at) - 자기 자신 팔로우 방지
 
 ### 뷰 (Views)
@@ -514,8 +551,10 @@ src/
 #### 2-2. 게시물 작성 - 이미지 업로드
 
 - Supabase Storage 버킷 사용 (이미 완료)
-- Server Action: `actions/post.ts` - createPost 함수
-- 파일 업로드 로직 및 검증
+- 클라이언트에서 직접 Supabase Storage에 이미지 업로드 (Server Action body size limit 문제 해결)
+- 업로드 진행률 표시 (UX 개선)
+- Server Action: `actions/post.ts` - createPost 함수 (이미지 URL만 받아서 게시물 생성)
+- 파일 검증 (크기, 형식) - 클라이언트에서 처리
 
 #### 2-3. 피드백 기능 - UI & 작성
 
@@ -543,8 +582,9 @@ src/
 #### 3-2. 프로필 페이지 - 게시물 그리드
 
 - 3열 그리드 레이아웃 (반응형)
-- Server Action: `actions/post.ts` - getPostsByUserId 함수
+- Server Action: `actions/post.ts` - getPostsByUserId 함수 (PostWithUser 반환, N+1 쿼리 최적화)
 - 게시물 이미지 썸네일 표시
+- Hover 효과: 게시물 썸네일에 실제 응원/피드백 수 표시 (데스크톱 전용)
 
 #### 3-3. 팔로우 기능
 
@@ -611,6 +651,57 @@ src/
 
 ---
 
-**문서 버전**: 4.0 (성장 공유 특화 버전)  
+**문서 버전**: 4.6 (성장 공유 특화 버전)  
 **작성일**: 2025-11-04  
+**최종 업데이트**: 2025-11-05  
 **작성자**: SH
+
+**변경 이력**:
+
+- v4.6 (2025-11-05): 팔로우 기능 및 UI 완전 구현 (스타일 개선, 팔로워 수 실시간 업데이트, 로깅 최적화)
+- v4.5 (2025-11-05): 팔로우 API 엔드포인트 추가 (모바일 앱 지원)
+- v4.4 (2025-11-05): 프로필 페이지 개선 예정 사항 추가
+- v4.3 (2025-11-05): 게시물 상세 페이지 구현 완료
+
+**구현 상태**: MVP 1차 개발 완료 (2025-11-05 기준)
+
+- 대댓글(답글) 기능 추가 완료
+- 게시물 상세 페이지 데스크톱 레이아웃 구현 완료
+- 프로필 페이지 기본 기능 구현 완료
+- 팔로우 기능 및 UI 완전 구현 완료
+
+- ✅ 핵심 기능 구현 완료
+- ✅ 반응형 레이아웃 완료
+- ✅ 무한 스크롤 및 성능 최적화 완료
+- ✅ 게시물 상세 페이지 (Desktop) 구현 완료
+- ✅ 프로필 페이지 기본 구현 완료 (헤더, 게시물 그리드)
+- ✅ 팔로우 기능 완전 구현 완료 (스타일, 실시간 업데이트, 에러 처리)
+- ⏳ 일부 UI 요소 (공유, 북마크 등)는 1차 MVP 제외
+- ⚠️ 프로필 페이지 성능 최적화 필요 (N+1 쿼리 문제)
+
+**개선 예정 사항** (2025-11-05 이후):
+
+### 프로필 페이지 성능 최적화 (우선순위: 높음)
+
+1. **N+1 쿼리 문제 해결**
+
+   - 현재: `getPostsByUserId`가 `Post[]`만 반환하여 프로필 페이지에서 각 게시물마다 user와 post_stats를 개별 조회
+   - 문제: 게시물 10개 기준 20개의 추가 쿼리 발생
+   - 개선: `getPostsByUserId`를 `PostWithUser[]` 반환하도록 변경, `post_stats` 뷰와 `users` 테이블 JOIN으로 한 번의 쿼리로 해결
+   - 예상 효과: 응답 시간 대폭 개선 (20개 쿼리 → 1개 쿼리)
+
+2. **데이터 전달 구조 단순화**
+
+   - 현재: `posts`와 `postsWithUser`를 모두 전달하여 데이터 중복
+   - 개선: `postsWithUser`만 전달하도록 단순화
+   - 파일: `components/profile/PostGrid.tsx`, `components/profile/ProfilePageWrapper.tsx`
+
+3. **UX 개선**
+
+   - Hover 효과 모바일 대응: `@media (hover: hover)` 사용하여 데스크톱에서만 hover 효과
+   - 이미지 최적화: Supabase Storage URL 최적화 조건 재검토
+   - 로깅 최적화: 개발 모드에서만 로그 출력 (`process.env.NODE_ENV === 'development'`) ✅ 완료
+
+4. **에러 처리 개선**
+   - 프로필 페이지 에러 처리: 사용자 친화적 메시지 표시
+   - 로딩 상태 개선: 스켈레톤 UI 정확도 향상

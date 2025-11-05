@@ -2,8 +2,12 @@
 
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
-import { uploadFile } from "./storage";
-import type { Post, PostWithUser, PaginatedResponse } from "@/types/sns";
+import type {
+  Post,
+  PostWithUser,
+  PaginatedResponse,
+  ApiResponse,
+} from "@/types/sns";
 
 const STORAGE_BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET || "uploads";
 const POSTS_PER_PAGE = 10;
@@ -32,8 +36,16 @@ async function getCurrentUserId(): Promise<string | null> {
 
 /**
  * 게시물 생성
+ * @param imageUrl - 클라이언트에서 업로드된 이미지의 Public URL
+ * @param caption - 게시물 캡션 (선택사항)
  */
-export async function createPost(formData: FormData) {
+export async function createPost({
+  imageUrl,
+  caption,
+}: {
+  imageUrl: string;
+  caption?: string;
+}) {
   try {
     console.group("createPost");
 
@@ -50,16 +62,9 @@ export async function createPost(formData: FormData) {
       return { error: "사용자 정보를 찾을 수 없습니다." };
     }
 
-    const image = formData.get("image") as File;
-    const caption = formData.get("caption") as string;
-
-    if (!image) {
-      return { error: "이미지를 선택해주세요." };
-    }
-
-    // 이미지 크기 검증 (5MB)
-    if (image.size > 5 * 1024 * 1024) {
-      return { error: "이미지 크기는 5MB 이하여야 합니다." };
+    // 이미지 URL 검증
+    if (!imageUrl) {
+      return { error: "이미지 URL이 필요합니다." };
     }
 
     // 캡션 길이 검증 (2,200자)
@@ -67,31 +72,15 @@ export async function createPost(formData: FormData) {
       return { error: "캡션은 2,200자 이하여야 합니다." };
     }
 
-    console.log("Uploading image...");
-    // 이미지 업로드
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", image);
-    uploadFormData.append("bucketName", STORAGE_BUCKET);
+    console.log("Creating post with image URL:", imageUrl);
 
-    const uploadResult = await uploadFile(uploadFormData);
-    if (uploadResult.error || !uploadResult.path) {
-      console.error("Upload failed:", uploadResult.error);
-      return { error: uploadResult.error || "이미지 업로드에 실패했습니다." };
-    }
-
-    // Supabase Storage URL 생성
-    const supabase = getServiceRoleClient();
-    const { data: urlData } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(uploadResult.path);
-
-    console.log("Image uploaded, creating post...");
     // 게시물 생성
+    const supabase = getServiceRoleClient();
     const { data: post, error } = await supabase
       .from("posts")
       .insert({
         user_id: userId,
-        image_url: urlData.publicUrl,
+        image_url: imageUrl,
         caption: caption || null,
       })
       .select()
@@ -257,6 +246,102 @@ export async function getPostsByUserId(
   } catch (error) {
     console.error("getPostsByUserId error:", error);
     return { data: [], next_cursor: null, has_more: false };
+  }
+}
+
+/**
+ * 단일 게시물 조회 (ID로)
+ */
+export async function getPostById(
+  postId: string,
+): Promise<ApiResponse<PostWithUser>> {
+  try {
+    console.group("getPostById");
+    console.log("Fetching post by ID:", postId);
+
+    const supabase = getServiceRoleClient();
+    const { userId: clerkId } = await auth();
+    let currentUserId: string | null = null;
+
+    if (clerkId) {
+      currentUserId = await getCurrentUserId();
+    }
+
+    // post_stats 뷰를 사용하여 통계 포함
+    const { data, error } = await supabase
+      .from("post_stats")
+      .select(
+        `
+        post_id,
+        user_id,
+        image_url,
+        caption,
+        created_at,
+        likes_count,
+        comments_count,
+        users!inner (
+          id,
+          clerk_id,
+          name,
+          avatar_url,
+          created_at
+        )
+      `,
+      )
+      .eq("post_id", postId)
+      .single();
+
+    if (error || !data) {
+      console.error("Error fetching post:", error);
+      console.groupEnd();
+      return { data: null, error: "게시물을 찾을 수 없습니다." };
+    }
+
+    // 현재 사용자의 응원하기 상태 확인
+    let isLiked = false;
+    if (currentUserId) {
+      const { data: like } = await supabase
+        .from("likes")
+        .select("post_id")
+        .eq("post_id", postId)
+        .eq("user_id", currentUserId)
+        .single();
+
+      isLiked = !!like;
+    }
+
+    // posts 테이블에서 updated_at 가져오기
+    const { data: postData } = await supabase
+      .from("posts")
+      .select("updated_at")
+      .eq("id", postId)
+      .single();
+
+    const post: PostWithUser = {
+      id: data.post_id,
+      user_id: data.user_id,
+      image_url: data.image_url,
+      caption: data.caption,
+      created_at: data.created_at,
+      updated_at: postData?.updated_at || data.created_at,
+      user: Array.isArray(data.users) ? data.users[0] : data.users,
+      likes_count: data.likes_count || 0,
+      comments_count: data.comments_count || 0,
+      is_liked: isLiked,
+    };
+
+    console.log("Post fetched successfully:", post.id);
+    console.groupEnd();
+    return { data: post, error: null };
+  } catch (error) {
+    console.error("getPostById error:", error);
+    return {
+      data: null,
+      error:
+        error instanceof Error
+          ? error.message
+          : "게시물 조회에 실패했습니다.",
+    };
   }
 }
 

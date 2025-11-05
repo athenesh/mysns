@@ -29,23 +29,28 @@ async function getCurrentUserId(): Promise<string | null> {
  * 팔로우/언팔로우 토글
  */
 export async function toggleFollow(targetUserId: string) {
+  const isDev = process.env.NODE_ENV === "development";
+  
   try {
-    console.group("toggleFollow");
-    console.log("Target user ID:", targetUserId);
+    if (isDev) {
+      console.group("toggleFollow");
+      console.log("Target user ID:", targetUserId);
+    }
 
     const { userId: clerkId } = await auth();
     if (!clerkId) {
-      console.error("Unauthorized");
+      if (isDev) console.error("Unauthorized");
       return { error: "로그인이 필요합니다." };
     }
 
     const followerId = await getCurrentUserId();
     if (!followerId) {
-      console.error("User not found");
+      if (isDev) console.error("User not found");
       return { error: "사용자 정보를 찾을 수 없습니다." };
     }
 
     if (followerId === targetUserId) {
+      if (isDev) console.warn("Cannot follow self");
       return { error: "자기 자신을 팔로우할 수 없습니다." };
     }
 
@@ -61,23 +66,25 @@ export async function toggleFollow(targetUserId: string) {
 
     if (existingFollow) {
       // 언팔로우
-      console.log("Unfollowing");
+      if (isDev) console.log("Unfollowing");
       const { error } = await supabase
         .from("follows")
         .delete()
         .eq("id", existingFollow.id);
 
       if (error) {
-        console.error("Error unfollowing:", error);
+        if (isDev) console.error("Error unfollowing:", error);
         return { error: error.message };
       }
 
-      console.log("Unfollowed successfully");
-      console.groupEnd();
+      if (isDev) {
+        console.log("Unfollowed successfully");
+        console.groupEnd();
+      }
       return { data: { is_following: false } };
     } else {
       // 팔로우
-      console.log("Following");
+      if (isDev) console.log("Following");
       const { data: follow, error } = await supabase
         .from("follows")
         .insert({
@@ -88,16 +95,18 @@ export async function toggleFollow(targetUserId: string) {
         .single();
 
       if (error) {
-        console.error("Error following:", error);
+        if (isDev) console.error("Error following:", error);
         return { error: error.message };
       }
 
-      console.log("Followed successfully");
-      console.groupEnd();
+      if (isDev) {
+        console.log("Followed successfully");
+        console.groupEnd();
+      }
       return { data: { is_following: true, follow } };
     }
   } catch (error) {
-    console.error("toggleFollow error:", error);
+    if (isDev) console.error("toggleFollow error:", error);
     return {
       error:
         error instanceof Error ? error.message : "팔로우 처리에 실패했습니다.",

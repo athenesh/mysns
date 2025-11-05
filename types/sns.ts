@@ -15,6 +15,8 @@ export interface User {
   id: string;
   clerk_id: string;
   name: string;
+  fullname: string | null;
+  bio: string | null;
   avatar_url: string | null;
   created_at: string;
 }
@@ -40,6 +42,7 @@ export interface Comment {
   post_id: string;
   user_id: string;
   content: string;
+  parent_comment_id: string | null; // 대댓글인 경우 부모 댓글 ID
   created_at: string;
   updated_at: string;
 }
@@ -83,6 +86,8 @@ export interface PostWithUser extends Post {
 // 댓글과 사용자 정보를 함께 포함하는 타입
 export interface CommentWithUser extends Comment {
   user: User;
+  replies?: CommentWithUser[]; // 대댓글 목록 (계층 구조)
+  replies_count?: number; // 대댓글 수
 }
 
 // 프로필 정보 타입

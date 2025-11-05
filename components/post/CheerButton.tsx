@@ -38,22 +38,31 @@ export function CheerButton({
     setLoading(true);
 
     // Optimistic update
+    const previousIsCheered = isCheered;
+    const previousCount = count;
     const newIsCheered = !isCheered;
     const newCount = newIsCheered ? count + 1 : count - 1;
     setIsCheered(newIsCheered);
     setCount(newCount);
 
-    const result = await toggleCheer(postId);
+    try {
+      const result = await toggleCheer(postId);
 
-    if (result.error) {
-      // 롤백
-      setIsCheered(isCheered);
-      setCount(count);
-    } else {
-      onToggle?.(newIsCheered, newCount);
+      if (result.error) {
+        // 롤백
+        setIsCheered(previousIsCheered);
+        setCount(previousCount);
+      } else {
+        onToggle?.(newIsCheered, newCount);
+      }
+    } catch (error) {
+      // 에러 발생 시 롤백
+      console.error("Error toggling cheer:", error);
+      setIsCheered(previousIsCheered);
+      setCount(previousCount);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

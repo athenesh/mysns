@@ -1,14 +1,16 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
 
-interface AvatarProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface AvatarProps {
   src?: string | null;
   alt?: string;
   size?: number;
   className?: string;
+  priority?: boolean;
 }
 
 export function Avatar({
@@ -16,7 +18,7 @@ export function Avatar({
   alt = "Avatar",
   size = 32,
   className,
-  ...props
+  priority = false,
 }: AvatarProps) {
   const [error, setError] = React.useState(false);
 
@@ -35,13 +37,16 @@ export function Avatar({
   }
 
   return (
-    <img
+    <Image
       src={src}
       alt={alt}
+      width={size}
+      height={size}
       className={cn("rounded-full object-cover", className)}
       style={{ width: size, height: size }}
       onError={() => setError(true)}
-      {...props}
+      priority={priority}
+      unoptimized={!src.startsWith("http")}
     />
   );
 }
